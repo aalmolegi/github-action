@@ -1,5 +1,4 @@
 from src.calculator import add
-import pytest
 
 
 def test_add():
