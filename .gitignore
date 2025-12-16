@@ -1,3 +1,5 @@
+data/green_tripdata_2025-01.parquet
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
