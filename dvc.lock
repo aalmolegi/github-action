@@ -1,0 +1,84 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -m src.pipeline.prepare_data --out data/raw.csv
+    outs:
+    - path: data/raw.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+  preprocess:
+    cmd: python -m src.pipeline.preprocess --in data/raw.csv --out-train 
+      data/train.npz --out-test data/test.npz --params params.yaml
+    deps:
+    - path: data/raw.csv
+      hash: md5
+      md5: 5afc23b9622f8f9ffa60824f4e97d0d5
+      size: 121385
+    - path: src/pipeline/preprocess.py
+      hash: md5
+      md5: 65061970f60d60ece5d89163bc8a0726
+      size: 1609
+    - path: src/utils/config.py
+      hash: md5
+      md5: f6eabd84d74cc63ddb30a6c56c17edcd
+      size: 904
+    params:
+      params.yaml:
+        data.random_state: 42
+        data.test_size: 0.2
+    outs:
+    - path: data/test.npz
+      hash: md5
+      md5: 0b47c19cbdaee749d5e72a022b1db626
+      size: 13029
+    - path: data/train.npz
+      hash: md5
+      md5: 9c45ca83324bc3794c2c0595d5970c4b
+      size: 50107
+  train:
+    cmd: python -m src.pipeline.train --train data/train.npz --model-out 
+      models/model.joblib --params params.yaml
+    deps:
+    - path: data/train.npz
+      hash: md5
+      md5: 9c45ca83324bc3794c2c0595d5970c4b
+      size: 50107
+    - path: src/pipeline/train.py
+      hash: md5
+      md5: c4a92408a507cf14e3e9a553729c7224
+      size: 936
+    - path: src/utils/config.py
+      hash: md5
+      md5: f6eabd84d74cc63ddb30a6c56c17edcd
+      size: 904
+    params:
+      params.yaml:
+        model.C: 1.0
+        model.max_iter: 200
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: 3733d0537ac9fb66291e32fd8d9c85e5
+      size: 1087
+  evaluate:
+    cmd: python -m src.pipeline.evaluate --test data/test.npz --model 
+      models/model.joblib --metrics-out reports/metrics.json
+    deps:
+    - path: data/test.npz
+      hash: md5
+      md5: 0b47c19cbdaee749d5e72a022b1db626
+      size: 13029
+    - path: models/model.joblib
+      hash: md5
+      md5: 3733d0537ac9fb66291e32fd8d9c85e5
+      size: 1087
+    - path: src/pipeline/evaluate.py
+      hash: md5
+      md5: 20e1764256d8c78b4c3972a17001a8ec
+      size: 1090
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: f87981c741767238248d1f85a2795907
+      size: 97

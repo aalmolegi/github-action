@@ -1,0 +1,39 @@
+stages:
+  prepare:
+    cmd: python -m src.pipeline.prepare_data --out data/raw.csv
+    outs:
+      - data/raw.csv
+
+  preprocess:
+    cmd: python -m src.pipeline.preprocess --in data/raw.csv --out-train data/train.npz --out-test data/test.npz --params params.yaml
+    deps:
+      - data/raw.csv
+      - src/pipeline/preprocess.py
+      - src/utils/config.py
+    params:
+      - data.test_size
+      - data.random_state
+    outs:
+      - data/train.npz
+      - data/test.npz
+
+  train:
+    cmd: python -m src.pipeline.train --train data/train.npz --model-out models/model.joblib --params params.yaml
+    deps:
+      - data/train.npz
+      - src/pipeline/train.py
+      - src/utils/config.py
+    params:
+      - model.C
+      - model.max_iter
+    outs:
+      - models/model.joblib
+
+  evaluate:
+    cmd: python -m src.pipeline.evaluate --test data/test.npz --model models/model.joblib --metrics-out reports/metrics.json
+    deps:
+      - data/test.npz
+      - models/model.joblib
+      - src/pipeline/evaluate.py
+    outs:
+      - reports/metrics.json

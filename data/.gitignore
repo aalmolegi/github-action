@@ -1,1 +1,4 @@
 /green_tripdata_2025-01.parquet
+/raw.csv
+/train.npz
+/test.npz
