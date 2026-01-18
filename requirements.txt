@@ -2,4 +2,10 @@ pytest
 black
 ruff
 mypy
-dvc[gdrive]
+
+pytest-cov
+dvc
+numpy
+pandas
+scikit-learn
+joblib

@@ -1,4 +1,4 @@
-name: CI (Lint, Type-check, Test)
+name: CI Pipeline
 
 on:
   push:
@@ -7,49 +7,73 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
-    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11']
-
+  quality:
+    name: Quality (Black, Ruff, Mypy)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            pip-${{ runner.os }}-${{ matrix.python-version }}-
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Black (format check)
-        run: |
-          black --check src tests
+      - name: Black
+        run: black --check src tests
 
-      - name: Run Ruff (linting)
-        run: |
-          ruff check src tests
+      - name: Ruff
+        run: ruff check src tests
 
-      - name: Run mypy (type checking)
-        run: |
-          mypy src
+      - name: Mypy
+        run: mypy src
 
-      - name: Run pytest (unit tests)
+  tests:
+    name: Unit tests (pytest)
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
         run: |
-          pytest -v
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pytest + coverage
+        run: |
+          python -m pytest -v --cov=src --cov-report=term-missing
+
+  pipeline-smoke:
+    name: DVC pipeline smoke test
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: DVC pipeline run
+        run: |
+          dvc --version
+          dvc repro -f
+
+      - name: Show metrics
+        run: |
+          cat reports/metrics.json
