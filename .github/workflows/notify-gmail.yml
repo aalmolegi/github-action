@@ -1,0 +1,88 @@
+name: Notify by Email (Push + PR)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  notify-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build email content
+        id: build
+        shell: bash
+        run: |
+          EVENT_TYPE="${{ github.event_name }}"
+          ACTOR="${{ github.actor }}"
+          REPO="${{ github.repository }}"
+          REPO_URL="https://github.com/${REPO}"
+
+          esc() {
+            # minimal HTML escaping
+            echo "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+          }
+
+          SUBJECT=""
+          HTML=""
+
+          if [ "$EVENT_TYPE" = "push" ]; then
+            BRANCH="${{ github.ref_name }}"
+            COMMIT_SHA="${{ github.sha }}"
+            COMMIT_URL="${REPO_URL}/commit/${COMMIT_SHA}"
+            COMMIT_MSG="$(esc "${{ github.event.head_commit.message }}")"
+
+            SUBJECT="[GitHub] Push to ${REPO} (${BRANCH})"
+            HTML="<h2>📦 Push Event</h2>
+            <p><b>Repo:</b> <a href='${REPO_URL}'>${REPO}</a><br/>
+            <b>Branch:</b> ${BRANCH}<br/>
+            <b>By:</b> ${ACTOR}</p>
+            <p><b>Commit:</b> <a href='${COMMIT_URL}'>${COMMIT_SHA}</a><br/>
+            <b>Message:</b> ${COMMIT_MSG}</p>"
+          elif [ "$EVENT_TYPE" = "pull_request" ]; then
+            ACTION="${{ github.event.action }}"
+            PR_TITLE="$(esc "${{ github.event.pull_request.title }}")"
+            PR_URL="${{ github.event.pull_request.html_url }}"
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+            HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+            SUBJECT="[GitHub] PR #${PR_NUMBER} ${ACTION} in ${REPO}"
+            HTML="<h2>🔀 Pull Request (${ACTION})</h2>
+            <p><b>Repo:</b> <a href='${REPO_URL}'>${REPO}</a><br/>
+            <b>By:</b> ${ACTOR}</p>
+            <p><b>PR:</b> <a href='${PR_URL}'>#${PR_NUMBER}</a><br/>
+            <b>Title:</b> ${PR_TITLE}<br/>
+            <b>From:</b> ${HEAD_BRANCH}<br/>
+            <b>Into:</b> ${BASE_BRANCH}</p>"
+          else
+            SUBJECT="[GitHub] Event in ${REPO}"
+            HTML="<p>Event: ${EVENT_TYPE}<br/>Repo: <a href='${REPO_URL}'>${REPO}</a><br/>By: ${ACTOR}</p>"
+          fi
+
+          {
+            echo "subject<<EOF"
+            echo "$SUBJECT"
+            echo "EOF"
+            echo "html<<EOF"
+            echo "$HTML"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Send email via Gmail SMTP
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+
+          username: ${{ secrets.GMAIL_USERNAME }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+
+          subject: ${{ steps.build.outputs.subject }}
+          html_body: ${{ steps.build.outputs.html }}
+
+          to: "abdulrahman.almolegi@gmail.com"
+          from: "GitHub Actions <${{ secrets.GMAIL_USERNAME }}>"
+
