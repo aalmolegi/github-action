@@ -10,3 +10,5 @@ pandas
 scikit-learn
 joblib
 pyyaml
+
+types-PyYAML
