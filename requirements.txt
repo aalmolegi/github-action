@@ -12,3 +12,5 @@ joblib
 pyyaml
 
 types-PyYAML
+
+pathspec==0.12.1
